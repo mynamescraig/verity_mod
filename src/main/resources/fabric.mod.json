@@ -3,7 +3,7 @@
 	"id": "verity",
 	"version": "${version}",
 	"name": "Verity",
-	"description": "A two-player Minecraft take on the Verity encounter from Destiny 2's Salvation's Edge raid. One Guardian is trapped in the Shadow Realm reading callouts, the other dissects 3D shapes outside. Solve the Truth, then burn the Witness.",
+	"description": "Verity, the little yellow AI orb from the creepypasta. It follows you around and tries to help. Tries.",
 	"authors": ["mynamescraig"],
 	"contact": {
 		"sources": "https://github.com/mynamescraig/verity_mod"
@@ -11,7 +11,8 @@
 	"license": "MIT",
 	"environment": "*",
 	"entrypoints": {
-		"main": ["dev.verity.VerityMod"]
+		"main": ["dev.verity.VerityMod"],
+		"client": ["dev.verity.client.VerityClient"]
 	},
 	"depends": {
 		"fabricloader": ">=0.16.0",
