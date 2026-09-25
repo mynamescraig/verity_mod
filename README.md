@@ -8,11 +8,10 @@ Every player gets their own Verity. It shows up about a minute after you first j
 
 1. Install [Fabric Loader](https://fabricmc.net/use/) for Minecraft **1.21.1**.
 2. Put [Fabric API](https://modrinth.com/mod/fabric-api) (for 1.21.1) in your `mods` folder.
-3. Get `verity-1.0.0.jar`:
-   - open this repo's **Actions** tab on GitHub
-   - pick the latest green **build** run
-   - download the **verity-mod-jar** artifact and unzip it
+3. Download `verity-1.0.0.jar` from the [latest release](https://github.com/mynamescraig/verity_mod/releases/latest).
 4. Put the jar in your `mods` folder.
+
+Every push to the repo builds the mod and publishes a new release automatically.
 
 **Both players need the mod**, because Verity has its own model. Play together with "Open to LAN" or on a Fabric server.
 

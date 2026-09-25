@@ -1,7 +1,5 @@
-# Automatically build the project and run any configured tests for every push
-# and submitted pull request. This can help catch issues that only occur on
-# certain platforms or Java versions, and provides a first line of defence
-# against bad commits.
+# Builds the mod on every push and pull request. Every push also publishes the
+# jar as a GitHub Release, so there is always a ready-to-download build.
 
 name: build
 on: [pull_request, push]
@@ -9,6 +7,8 @@ on: [pull_request, push]
 jobs:
   build:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       - name: checkout repository
         uses: actions/checkout@v6
@@ -28,3 +28,24 @@ jobs:
         with:
           name: verity-mod-jar
           path: build/libs/
+      - name: publish release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: build-${{ github.run_number }}
+        run: |
+          jar=$(ls build/libs/*.jar | grep -v -- '-sources\.jar$' | head -n 1)
+          short_sha=$(git rev-parse --short HEAD)
+          {
+            echo "Automatic build #${{ github.run_number }} from \`${{ github.ref_name }}\` (${short_sha})."
+            echo
+            echo "**Install:** put \`$(basename "$jar")\` in your \`mods\` folder, with Fabric Loader and Fabric API for Minecraft 1.21.1. Both players need it."
+            echo
+            echo "### Changes"
+            git log -1 --pretty=format:'%s%n%n%b' | grep -v -E '^(Co-Authored-By|Claude-Session):'
+          } > release-notes.md
+          gh release create "$TAG" "$jar" \
+            --target "$GITHUB_SHA" \
+            --title "Verity build #${{ github.run_number }}" \
+            --notes-file release-notes.md \
+            --latest
