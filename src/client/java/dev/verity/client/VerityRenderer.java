@@ -41,6 +41,9 @@ public class VerityRenderer extends EntityRenderer<VerityEntity> {
 
 		poseStack.pushPose();
 		poseStack.translate(0.0, RADIUS, 0.0);
+		// A little squash-and-stretch as it bobs, so it feels alive.
+		float squash = 0.04f * Mth.sin(time * 0.16f);
+		poseStack.scale(1f + squash, 1f - squash, 1f + squash);
 		float headYaw = Mth.rotLerp(partialTick, entity.yHeadRotO, entity.yHeadRot);
 		float pitch = Mth.lerp(partialTick, entity.xRotO, entity.getXRot());
 		poseStack.mulPose(Axis.YP.rotationDegrees(-headYaw));
@@ -48,8 +51,10 @@ public class VerityRenderer extends EntityRenderer<VerityEntity> {
 		PoseStack.Pose pose = poseStack.last();
 		VertexConsumer vc = buffers.getBuffer(RenderType.entityTranslucent(TEXTURE));
 
-		float pulse = 0.92f + 0.08f * Mth.sin(time * 0.15f);
 		boolean stare = mood == VerityEntity.MOOD_STARE;
+		boolean happy = mood == VerityEntity.MOOD_HAPPY;
+		boolean sleepy = mood == VerityEntity.MOOD_SLEEPY;
+		float pulse = sleepy ? 0.7f + 0.05f * Mth.sin(time * 0.05f) : 0.92f + 0.08f * Mth.sin(time * 0.15f);
 		// Body
 		sphere(pose, vc, RADIUS, 1.0f * pulse, (stare ? 0.75f : 0.88f) * pulse, 0.15f, 1.0f);
 
@@ -57,11 +62,24 @@ public class VerityRenderer extends EntityRenderer<VerityEntity> {
 		float er = stare ? 0.9f : 0.12f;
 		float eg = stare ? 0.05f : 0.08f;
 		float eb = stare ? 0.05f : 0.02f;
-		boolean blink = !stare && ((int) time % 90) < 3;
-		float eyeH = blink ? 0.008f : (stare ? 0.03f : 0.045f);
-		quad(pose, vc, -0.085f, 0.03f, 0.03f, eyeH, 0f, er, eg, eb, 1f);
-		quad(pose, vc, 0.085f, 0.03f, 0.03f, eyeH, 0f, er, eg, eb, 1f);
-		if (stare) {
+		if (happy) {
+			// ^ ^ eyes: three little squares per eye.
+			for (float side : new float[] {-0.085f, 0.085f}) {
+				quad(pose, vc, side - 0.018f, 0.025f, 0.016f, 0.016f, 0f, er, eg, eb, 1f);
+				quad(pose, vc, side, 0.04f, 0.016f, 0.016f, 0f, er, eg, eb, 1f);
+				quad(pose, vc, side + 0.018f, 0.025f, 0.016f, 0.016f, 0f, er, eg, eb, 1f);
+			}
+		} else {
+			boolean blink = !stare && ((int) time % 90) < 3;
+			float eyeH = sleepy || blink ? 0.008f : (stare ? 0.03f : 0.045f);
+			float eyeY = sleepy ? 0.02f : 0.03f;
+			quad(pose, vc, -0.085f, eyeY, 0.03f, eyeH, 0f, er, eg, eb, 1f);
+			quad(pose, vc, 0.085f, eyeY, 0.03f, eyeH, 0f, er, eg, eb, 1f);
+		}
+		if (sleepy) {
+			// Small "o" mouth.
+			quad(pose, vc, 0f, -0.06f, 0.022f, 0.022f, 0f, 0.12f, 0.08f, 0.02f, 1f);
+		} else if (stare) {
 			// Wide grin with teeth.
 			for (int i = -4; i <= 4; i++) {
 				float x = i * 0.025f;
@@ -70,10 +88,11 @@ public class VerityRenderer extends EntityRenderer<VerityEntity> {
 				if (i % 2 == 0) quad(pose, vc, x, y + 0.012f, 0.014f, 0.02f, 0.003f, 1f, 1f, 0.95f, 1f);
 			}
 		} else {
-			// Friendly smile: a curved row of small dark squares.
+			// Friendly smile: a curved row of small dark squares. Bigger when happy.
+			float curve = happy ? 3.2f : 2.2f;
 			for (int i = -4; i <= 4; i++) {
 				float x = i * 0.022f;
-				float y = -0.06f + (x * x) * 2.2f;
+				float y = (happy ? -0.07f : -0.06f) + (x * x) * curve;
 				quad(pose, vc, x, y, 0.024f, 0.018f, 0f, 0.12f, 0.08f, 0.02f, 1f);
 			}
 		}
@@ -81,8 +100,9 @@ public class VerityRenderer extends EntityRenderer<VerityEntity> {
 		// Soft glow halo.
 		float haloR = 1.0f;
 		float haloG = mood == VerityEntity.MOOD_ALERT ? 0.45f : (stare ? 0.2f : 0.95f);
-		float haloB = mood == VerityEntity.MOOD_ALERT ? 0.1f : 0.35f;
-		sphere(pose, vc, RADIUS * (1.35f + 0.05f * Mth.sin(time * 0.2f)), haloR, haloG, haloB, 0.18f);
+		float haloB = mood == VerityEntity.MOOD_ALERT ? 0.1f : (happy ? 0.6f : 0.35f);
+		float haloA = sleepy ? 0.08f : (happy ? 0.26f : 0.18f);
+		sphere(pose, vc, RADIUS * (1.35f + 0.05f * Mth.sin(time * 0.2f)), haloR, haloG, haloB, haloA);
 
 		poseStack.popPose();
 		super.render(entity, entityYaw, partialTick, poseStack, buffers, packedLight);

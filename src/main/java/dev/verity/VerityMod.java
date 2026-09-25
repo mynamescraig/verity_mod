@@ -5,11 +5,13 @@ import org.slf4j.LoggerFactory;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
@@ -40,10 +42,15 @@ public final class VerityMod implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		VerityConfig.load();
 		FabricDefaultAttributeRegistry.register(VERITY, VerityEntity.createAttributes());
 
 		ServerTickEvents.END_SERVER_TICK.register(VerityManager::tick);
+		ServerLifecycleEvents.SERVER_STARTED.register(VerityManager::onStarted);
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> VerityManager.onStopping());
+		ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
+			if (!alive) VerityManager.onRespawn(newPlayer);
+		});
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> VerityManager.onJoin(handler.getPlayer()));
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> VerityManager.onLeave(handler.getPlayer()));
 		ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) ->
@@ -68,6 +75,14 @@ public final class VerityMod implements ModInitializer {
 				}))
 				.then(Commands.literal("stay").executes(ctx -> stay(ctx, true)))
 				.then(Commands.literal("follow").executes(ctx -> stay(ctx, false)))
+				.then(Commands.literal("friendship")
+						.executes(VerityMod::friendship)
+						.then(Commands.literal("set").requires(src -> src.hasPermission(2))
+								.then(Commands.argument("minutes", IntegerArgumentType.integer(0)).executes(ctx -> {
+									ServerPlayer p = ctx.getSource().getPlayerOrException();
+									VerityManager.setBond(p, IntegerArgumentType.getInteger(ctx, "minutes"));
+									return friendship(ctx);
+								}))))
 				.then(Commands.literal("creepy")
 						.then(Commands.argument("enabled", BoolArgumentType.bool()).executes(ctx -> {
 							ServerPlayer p = ctx.getSource().getPlayerOrException();
@@ -86,6 +101,21 @@ public final class VerityMod implements ModInitializer {
 						}))));
 	}
 
+	private static int friendship(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+		ServerPlayer p = ctx.getSource().getPlayerOrException();
+		int minutes = VerityManager.bond(p);
+		int stage = VerityManager.stage(p);
+		boolean creepy = VerityManager.isCreepy(p);
+		StringBuilder hearts = new StringBuilder();
+		for (int i = 0; i < 4; i++) hearts.append(i <= stage ? (creepy && stage == 3 ? "∞" : "♥") : "♡");
+		String title = creepy ? VerityManager.STAGE_NAMES[stage] : (stage == 0 ? "New Friend" : "Friend");
+		ctx.getSource().sendSuccess(() -> Component.literal("Verity's friendship: ").withStyle(ChatFormatting.YELLOW)
+				.append(Component.literal(hearts + " ").withStyle(creepy && stage == 3 ? ChatFormatting.DARK_RED : ChatFormatting.RED))
+				.append(Component.literal(title).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD))
+				.append(Component.literal("  (" + minutes + " minutes together)").withStyle(ChatFormatting.GRAY)), false);
+		return 1;
+	}
+
 	private static int stay(CommandContext<CommandSourceStack> ctx, boolean stay) throws CommandSyntaxException {
 		ServerPlayer p = ctx.getSource().getPlayerOrException();
 		VerityEntity v = VerityManager.get(p);
@@ -102,6 +132,7 @@ public final class VerityMod implements ModInitializer {
 				"/verity summon  (call Verity to you)",
 				"/verity dismiss  (send Verity away)",
 				"/verity stay | follow",
+				"/verity friendship  (how close you two are)",
 				"/verity creepy true|false",
 				"/verity light true|false",
 				"Or say \"verity help\" in chat."
