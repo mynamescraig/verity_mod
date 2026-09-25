@@ -1,0 +1,22 @@
+{
+	"schemaVersion": 1,
+	"id": "verity",
+	"version": "${version}",
+	"name": "Verity",
+	"description": "A two-player Minecraft take on the Verity encounter from Destiny 2's Salvation's Edge raid. One Guardian is trapped in the Shadow Realm reading callouts, the other dissects 3D shapes outside. Solve the Truth, then burn the Witness.",
+	"authors": ["mynamescraig"],
+	"contact": {
+		"sources": "https://github.com/mynamescraig/verity_mod"
+	},
+	"license": "MIT",
+	"environment": "*",
+	"entrypoints": {
+		"main": ["dev.verity.VerityMod"]
+	},
+	"depends": {
+		"fabricloader": ">=0.16.0",
+		"minecraft": "~1.21.1",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
